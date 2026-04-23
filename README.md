@@ -1,2 +1,16 @@
 # web-main
-This is a React app for the domain ivanpashkulev.com
+
+React + TypeScript frontend for [ivanpashkulev.com](https://ivanpashkulev.com).
+
+## Development
+
+```bash
+npm install
+npm run dev
+```
+
+## Build
+
+```bash
+npm run build
+```
