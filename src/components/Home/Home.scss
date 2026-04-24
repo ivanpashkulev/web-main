@@ -1,0 +1,68 @@
+.home {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--color-border);
+    background-color: var(--color-surface);
+  }
+
+  &__identity {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+  }
+
+  &__avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: var(--radius-full);
+    background-color: var(--color-border);
+    flex-shrink: 0;
+  }
+
+  &__bio {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+
+  &__name {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--color-text-primary);
+  }
+
+  &__title {
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin: 0;
+    color: var(--color-accent);
+  }
+
+  &__description {
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    margin: 0;
+    color: var(--color-text-secondary);
+    max-width: 480px;
+    line-height: 1.5;
+  }
+
+  &__chat {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+}
