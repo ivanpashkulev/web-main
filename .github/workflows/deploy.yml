@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
       contents: read
       packages: write
@@ -39,6 +39,8 @@ jobs:
           context: .
           push: true
           platforms: linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: |
             ghcr.io/ivanpashkulev/web-main:${{ steps.sha.outputs.short }}
             ghcr.io/ivanpashkulev/web-main:latest
