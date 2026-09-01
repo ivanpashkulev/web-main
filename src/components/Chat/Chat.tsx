@@ -88,7 +88,11 @@ const Chat = () => {
 
   return (
     <div className="chat">
-      <div className="chat__messages">
+      <div
+        className="chat__messages"
+        aria-live="polite"
+        aria-busy={streaming}
+      >
         {messages.map((msg, i) => (
           // Messages are append-only, so their indexes remain stable.
           // eslint-disable-next-line react-x/no-array-index-key
