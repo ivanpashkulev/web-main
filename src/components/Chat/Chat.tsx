@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useToast } from '@/components/common/Toast/ToastContext'
 import type { Message } from '@/types'
 import './Chat.scss'
 
@@ -9,6 +10,7 @@ const Chat = () => {
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const toast = useToast()
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -30,7 +32,15 @@ const Chat = () => {
         body: JSON.stringify({ message: userMessage.content, history }),
       })
 
-      const reader = response.body!.getReader()
+      if (!response.ok) {
+        throw new Error(`Chat request failed with status ${response.status}`)
+      }
+
+      if (!response.body) {
+        throw new Error('Chat response body is empty')
+      }
+
+      const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
 
@@ -57,6 +67,13 @@ const Chat = () => {
       }
     } catch (error) {
       console.error('Failed to send message:', error)
+      toast.error('Unable to send your message. Please try again.')
+      setMessages(current => {
+        const lastMessage = current.at(-1)
+        return lastMessage?.role === 'assistant' && !lastMessage.content
+          ? current.slice(0, -1)
+          : current
+      })
     } finally {
       setStreaming(false)
     }
