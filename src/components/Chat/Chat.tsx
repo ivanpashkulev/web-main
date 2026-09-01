@@ -55,6 +55,8 @@ const Chat = () => {
           })
         }
       }
+    } catch (error) {
+      console.error('Failed to send message:', error)
     } finally {
       setStreaming(false)
     }
@@ -63,7 +65,7 @@ const Chat = () => {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      sendMessage()
+      void sendMessage()
     }
   }
 
@@ -71,6 +73,8 @@ const Chat = () => {
     <div className="chat">
       <div className="chat__messages">
         {messages.map((msg, i) => (
+          // Messages are append-only, so their indexes remain stable.
+          // eslint-disable-next-line react-x/no-array-index-key
           <div key={i} className={`chat__message chat__message--${msg.role}`}>
             <p className={streaming && i === messages.length - 1 ? 'chat__message__streaming' : ''}>
               {msg.content}
@@ -91,7 +95,7 @@ const Chat = () => {
         />
         <button
           className="chat__send"
-          onClick={sendMessage}
+          onClick={() => void sendMessage()}
           disabled={streaming || !input.trim()}
         >
           Send
