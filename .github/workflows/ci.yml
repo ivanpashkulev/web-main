@@ -1,4 +1,4 @@
-name: Build and Publish ivanpashkulev.com UI
+name: Build and Publish ivanpashkulev.com frontend app
 
 on:
   push:
