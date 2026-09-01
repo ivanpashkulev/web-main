@@ -1,0 +1,37 @@
+name: Build and Publish ivanpashkulev.com UI
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate React App
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Build application
+        run: npm run build
+
+  build-and-publish:
+    name: Build and Publish React Frontend app
+    needs: validate
+    permissions:
+      contents: read
+      packages: write
+    uses: ivanpashkulev/devops/.github/workflows/build-and-publish.yml@main
+    secrets:
+      DEVOPS_TOKEN: ${{ secrets.DEVOPS_PAT }}
