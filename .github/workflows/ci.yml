@@ -2,6 +2,8 @@ name: Build and Publish ivanpashkulev.com UI
 
 on:
   push:
+    branches: [main, dev]
+  pull_request:
     branches: [main]
 
 jobs:
@@ -24,11 +26,13 @@ jobs:
         run: npm run lint
 
       - name: Build application
+        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/dev'
         run: npm run build
 
   build-and-publish:
     name: Build and Publish React Frontend app
     needs: validate
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: read
       packages: write
