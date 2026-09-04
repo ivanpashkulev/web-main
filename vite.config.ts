@@ -5,7 +5,12 @@ import path from 'node:path'
 export default defineConfig({
   plugins: [react()],
   preview: {
-    allowedHosts: ['ivanpashkulev.com'],
+    allowedHosts: [
+      'ivanpashkulev.com',
+      'aws.ivanpashkulev.com',
+      'gcp.ivanpashkulev.com',
+      'az.ivanpashkulev.com',
+    ],
   },
   resolve: {
     alias: {
