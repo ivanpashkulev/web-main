@@ -1,5 +1,6 @@
 import Chat from '@/components/Chat/Chat'
 import ThemeToggle from '@/components/common/ThemeToggle/ThemeToggle'
+import avatarUrl from '@/assets/avatar.jpg'
 import type { Theme } from '@/types'
 import './Home.scss'
 
@@ -12,7 +13,9 @@ const Home = ({ theme, onToggle }: Props) => (
   <div className="home">
     <header className="home__header">
       <div className="home__identity">
-        <div className="home__avatar" />
+        <div className="home__avatar" >
+          <img src={avatarUrl} alt="Ivan Pashkulev" />  
+        </div>
         <div className="home__bio">
           <h1 className="home__name">Ivan Pashkulev</h1>
           <p className="home__title">Software Engineer · AI &amp; Full-Stack</p>

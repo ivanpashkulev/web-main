@@ -1,7 +1,7 @@
-FROM node:22-alpine
+FROM node:24.20.0-alpine
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm ci --prefer-offline --no-audit
 COPY . .
 EXPOSE 4173
 CMD ["/bin/sh", "-c", "npm run build && npm run preview -- --host"]

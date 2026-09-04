@@ -21,11 +21,19 @@
   }
 
   &__avatar {
-    width: 72px;
-    height: 72px;
+    width: 120px;
+    height: 120px;
     border-radius: var(--radius-full);
     background-color: var(--color-border);
     flex-shrink: 0;
+    overflow: hidden;
+ 
+    img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
   }
 
   &__bio {
