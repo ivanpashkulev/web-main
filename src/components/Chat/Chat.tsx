@@ -4,6 +4,16 @@ import type { Message } from '@/types'
 import './Chat.scss'
 
 const API_URL = import.meta.env.VITE_API_URL
+const HISTORY_LIMIT_MESSAGE =
+  'This conversation has reached its maximum length. For further questions, contact Ivan at ivan@ivanpashkulev.com.'
+const MESSAGE_LIMIT_MESSAGE =
+  'Your message is too long. Please shorten it and try again.'
+
+type ErrorResponse = {
+  detail?: {
+    code?: string
+  }
+}
 
 const Chat = () => {
   const [messages, setMessages] = useState<Message[]>([])
@@ -11,6 +21,13 @@ const Chat = () => {
   const [streaming, setStreaming] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const toast = useToast()
+
+  const replacePendingAssistantMessage = (content: string) => {
+    setMessages(current => [
+      ...current.slice(0, -1),
+      { role: 'assistant', content },
+    ])
+  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -31,6 +48,29 @@ const Chat = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userMessage.content, history }),
       })
+
+      if (response.status === 429) {
+        replacePendingAssistantMessage(
+          'You have reached the chat request limit. Please contact Ivan at ivan@ivanpashkulev.com if you would like to continue the conversation.',
+        )
+        return
+      }
+
+      if (response.status === 413) {
+        const error = await response.json().catch(() => null) as ErrorResponse | null
+
+        if (error?.detail?.code === 'conversation_history_limit_exceeded') {
+          replacePendingAssistantMessage(HISTORY_LIMIT_MESSAGE)
+          return
+        }
+
+        if (error?.detail?.code === 'chat_message_limit_exceeded') {
+          replacePendingAssistantMessage(MESSAGE_LIMIT_MESSAGE)
+          return
+        }
+
+        return
+      }
 
       if (!response.ok) {
         throw new Error(`Chat request failed with status ${response.status}`)
