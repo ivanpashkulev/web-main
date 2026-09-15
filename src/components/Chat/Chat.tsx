@@ -1,13 +1,17 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useToast } from '@/components/common/Toast/ToastContext'
 import type { Message } from '@/types'
 import './Chat.scss'
+import Turnstile from './Turnstile'
 
 const API_URL = import.meta.env.VITE_API_URL
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY
 const HISTORY_LIMIT_MESSAGE =
   'This conversation has reached its maximum length. For further questions, contact Ivan at ivan@ivanpashkulev.com.'
 const MESSAGE_LIMIT_MESSAGE =
   'Your message is too long. Please shorten it and try again.'
+const VERIFICATION_UNAVAILABLE_MESSAGE =
+  'Verification is unavailable. Reload this page to try again.'
 
 type ErrorResponse = {
   detail?: {
@@ -15,10 +19,20 @@ type ErrorResponse = {
   }
 }
 
+type VerificationState =
+  | { status: 'checking-session' }
+  | { status: 'challenge-required' }
+  | { status: 'token-ready'; token: string }
+  | { status: 'verified-session' }
+  | { status: 'unavailable' }
+
 const Chat = () => {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
+  const [verification, setVerification] = useState<VerificationState>({
+    status: 'checking-session',
+  })
   const bottomRef = useRef<HTMLDivElement>(null)
   const toast = useToast()
 
@@ -33,8 +47,57 @@ const Chat = () => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  useEffect(() => {
+    let active = true
+
+    void fetch(`${API_URL}/chat/session`, { credentials: 'include' })
+      .then(async response => {
+        if (!response.ok) throw new Error('Unable to verify the chat session.')
+        return response.json() as Promise<{ verified: boolean }>
+      })
+      .then(({ verified }) => {
+        if (!active) return
+
+        setVerification({
+          status: verified ? 'verified-session' : 'challenge-required',
+        })
+      })
+      .catch(error => {
+        console.error('Failed to check chat session:', error)
+        if (active) setVerification({ status: 'unavailable' })
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const handleTurnstileToken = useCallback((token: string) => {
+    setVerification({ status: 'token-ready', token })
+  }, [])
+
+  const handleTurnstileError = useCallback(() => {
+    setVerification({ status: 'unavailable' })
+  }, [])
+
+  const handleTurnstileExpired = useCallback(() => {
+    setVerification({ status: 'challenge-required' })
+  }, [])
+
+  const turnstileToken = verification.status === 'token-ready'
+    ? verification.token
+    : undefined
+  const verificationComplete = verification.status === 'verified-session'
+    || verification.status === 'token-ready'
+  const showTurnstile = verification.status === 'challenge-required'
+    || verification.status === 'token-ready'
+
   const sendMessage = async () => {
-    if (!input.trim() || streaming) return
+    if (
+      !input.trim()
+      || streaming
+      || !verificationComplete
+    ) return
 
     const userMessage: Message = { role: 'user', content: input.trim() }
     const history = messages
@@ -46,8 +109,21 @@ const Chat = () => {
       const response = await fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage.content, history }),
+        credentials: 'include',
+        body: JSON.stringify({
+          message: userMessage.content,
+          history,
+          turnstile_token: turnstileToken,
+        }),
       })
+
+      if (response.status === 403) {
+        replacePendingAssistantMessage(
+          VERIFICATION_UNAVAILABLE_MESSAGE,
+        )
+        setVerification({ status: 'unavailable' })
+        return
+      }
 
       if (response.status === 429) {
         replacePendingAssistantMessage(
@@ -73,12 +149,20 @@ const Chat = () => {
       }
 
       if (!response.ok) {
+        if (response.status === 503) {
+          replacePendingAssistantMessage(VERIFICATION_UNAVAILABLE_MESSAGE)
+          setVerification({ status: 'unavailable' })
+          return
+        }
+
         throw new Error(`Chat request failed with status ${response.status}`)
       }
 
       if (!response.body) {
         throw new Error('Chat response body is empty')
       }
+
+      setVerification({ status: 'verified-session' })
 
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
@@ -145,6 +229,21 @@ const Chat = () => {
         <div ref={bottomRef} />
       </div>
       <div className="chat__input-area">
+        {showTurnstile && (
+          <div className="chat__verification">
+            <Turnstile
+              siteKey={TURNSTILE_SITE_KEY}
+              onToken={handleTurnstileToken}
+              onError={handleTurnstileError}
+              onExpired={handleTurnstileExpired}
+            />
+          </div>
+        )}
+        {verification.status === 'unavailable' && (
+          <p className="chat__verification-error" role="alert">
+            {VERIFICATION_UNAVAILABLE_MESSAGE}
+          </p>
+        )}
         <textarea
           className="chat__input"
           value={input}
@@ -157,7 +256,11 @@ const Chat = () => {
         <button
           className="chat__send"
           onClick={() => void sendMessage()}
-          disabled={streaming || !input.trim()}
+          disabled={
+            streaming
+            || !input.trim()
+            || !verificationComplete
+          }
         >
           Send
         </button>
