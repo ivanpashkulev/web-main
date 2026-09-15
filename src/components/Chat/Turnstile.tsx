@@ -5,9 +5,13 @@ type TurnstileApi = {
     container: HTMLElement,
     options: {
       sitekey: string
+      retry: 'never'
+      'refresh-expired': 'auto'
+      'refresh-timeout': 'never'
       callback: (token: string) => void
-      'error-callback': () => void
+      'error-callback': (errorCode: string) => boolean
       'expired-callback': () => void
+      'timeout-callback': () => void
     },
   ) => string
   remove: (widgetId: string) => void
@@ -46,12 +50,17 @@ function loadTurnstile(): Promise<TurnstileApi> {
 type TurnstileProps = {
   siteKey: string
   onToken: (token: string) => void
-  onError: () => void
+  onError: (errorCode?: string) => void
   onExpired: () => void
 }
 
 const Turnstile = ({ siteKey, onToken, onError, onExpired }: TurnstileProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
+  const callbacksRef = useRef({ onToken, onError, onExpired })
+
+  useEffect(() => {
+    callbacksRef.current = { onToken, onError, onExpired }
+  }, [onError, onExpired, onToken])
 
   useEffect(() => {
     let widgetId: string | undefined
@@ -63,12 +72,19 @@ const Turnstile = ({ siteKey, onToken, onError, onExpired }: TurnstileProps) => 
 
         widgetId = turnstile.render(containerRef.current, {
           sitekey: siteKey,
-          callback: onToken,
-          'error-callback': onError,
-          'expired-callback': onExpired,
+          retry: 'never',
+          'refresh-expired': 'auto',
+          'refresh-timeout': 'never',
+          callback: token => callbacksRef.current.onToken(token),
+          'error-callback': errorCode => {
+            callbacksRef.current.onError(errorCode)
+            return true
+          },
+          'expired-callback': () => callbacksRef.current.onExpired(),
+          'timeout-callback': () => callbacksRef.current.onError('timeout'),
         })
       })
-      .catch(onError)
+      .catch(() => callbacksRef.current.onError())
 
     return () => {
       active = false
@@ -76,7 +92,7 @@ const Turnstile = ({ siteKey, onToken, onError, onExpired }: TurnstileProps) => 
         window.turnstile.remove(widgetId)
       }
     }
-  }, [onError, onExpired, onToken, siteKey])
+  }, [siteKey])
 
   return <div ref={containerRef} />
 }
