@@ -1,11 +1,9 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useToast } from '@/components/common/Toast/ToastContext'
 import type { Message } from '@/types'
 import './Chat.scss'
-import Turnstile from './Turnstile'
 
 const API_URL = import.meta.env.VITE_API_URL
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY
 const HISTORY_LIMIT_MESSAGE =
   'This conversation has reached its maximum length. For further questions, contact Ivan at ivan@ivanpashkulev.com.'
 const MESSAGE_LIMIT_MESSAGE =
@@ -21,9 +19,6 @@ const Chat = () => {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
-  const [sessionVerified, setSessionVerified] = useState<boolean>()
-  const [turnstileToken, setTurnstileToken] = useState<string>()
-  const [turnstileKey, setTurnstileKey] = useState(0)
   const bottomRef = useRef<HTMLDivElement>(null)
   const toast = useToast()
 
@@ -38,44 +33,8 @@ const Chat = () => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  useEffect(() => {
-    let active = true
-
-    void fetch(`${API_URL}/chat/session`, { credentials: 'include' })
-      .then(async response => {
-        if (!response.ok) throw new Error('Unable to verify the chat session.')
-        return response.json() as Promise<{ verified: boolean }>
-      })
-      .then(({ verified }) => {
-        if (active) setSessionVerified(verified)
-      })
-      .catch(error => {
-        console.error('Failed to check chat session:', error)
-        if (active) setSessionVerified(false)
-      })
-
-    return () => {
-      active = false
-    }
-  }, [])
-
-  const resetTurnstile = useCallback(() => {
-    setTurnstileToken(undefined)
-    setTurnstileKey(current => current + 1)
-  }, [])
-
-  const handleTurnstileError = useCallback(() => {
-    setTurnstileToken(undefined)
-    toast.error('Verification is unavailable. Please try again shortly.')
-  }, [toast])
-
   const sendMessage = async () => {
-    if (
-      !input.trim()
-      || streaming
-      || sessionVerified === undefined
-      || (!sessionVerified && !turnstileToken)
-    ) return
+    if (!input.trim() || streaming) return
 
     const userMessage: Message = { role: 'user', content: input.trim() }
     const history = messages
@@ -87,28 +46,14 @@ const Chat = () => {
       const response = await fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          message: userMessage.content,
-          history,
-          turnstile_token: turnstileToken,
-        }),
+        body: JSON.stringify({ message: userMessage.content, history }),
       })
-
-      if (response.status === 403) {
-        replacePendingAssistantMessage(
-          'Please complete the verification and try again.',
-        )
-        setSessionVerified(false)
-        resetTurnstile()
-        return
-      }
 
       if (response.status === 429) {
         replacePendingAssistantMessage(
           'You have reached the chat request limit. Please contact Ivan at ivan@ivanpashkulev.com if you would like to continue the conversation.',
         )
-        throw new Error('Unknown chat size-limit response')
+        return
       }
 
       if (response.status === 413) {
@@ -134,9 +79,6 @@ const Chat = () => {
       if (!response.body) {
         throw new Error('Chat response body is empty')
       }
-
-      setSessionVerified(true)
-      setTurnstileToken(undefined)
 
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
@@ -203,15 +145,6 @@ const Chat = () => {
         <div ref={bottomRef} />
       </div>
       <div className="chat__input-area">
-        {sessionVerified === false && (
-          <Turnstile
-            key={turnstileKey}
-            siteKey={TURNSTILE_SITE_KEY}
-            onToken={setTurnstileToken}
-            onError={handleTurnstileError}
-            onExpired={resetTurnstile}
-          />
-        )}
         <textarea
           className="chat__input"
           value={input}
@@ -224,12 +157,7 @@ const Chat = () => {
         <button
           className="chat__send"
           onClick={() => void sendMessage()}
-          disabled={
-            streaming
-            || !input.trim()
-            || sessionVerified === undefined
-            || (!sessionVerified && !turnstileToken)
-          }
+          disabled={streaming || !input.trim()}
         >
           Send
         </button>
