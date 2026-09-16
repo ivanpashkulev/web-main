@@ -91,6 +91,9 @@ const Chat = () => {
     || verification.status === 'token-ready'
   const showTurnstile = verification.status === 'challenge-required'
     || verification.status === 'token-ready'
+  const turnstileClassName = verification.status === 'token-ready'
+    ? 'chat__verification chat__verification--token-ready'
+    : 'chat__verification'
 
   const sendMessage = async () => {
     if (
@@ -230,7 +233,7 @@ const Chat = () => {
       </div>
       <div className="chat__input-area">
         {showTurnstile && (
-          <div className="chat__verification">
+          <div className={turnstileClassName}>
             <Turnstile
               siteKey={TURNSTILE_SITE_KEY}
               onToken={handleTurnstileToken}
