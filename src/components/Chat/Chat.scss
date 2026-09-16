@@ -64,6 +64,16 @@
     flex-basis: 100%;
   }
 
+  &__verification {
+    max-height: 80px;
+    overflow: hidden;
+
+    &--token-ready {
+      pointer-events: none;
+      animation: dismiss-turnstile 250ms ease 1s forwards;
+    }
+  }
+
   &__verification-error {
     margin: 0;
     color: var(--color-text-secondary);
@@ -117,6 +127,14 @@
       opacity: 0.5;
       cursor: not-allowed;
     }
+  }
+}
+
+@keyframes dismiss-turnstile {
+  to {
+    opacity: 0;
+    max-height: 0;
+    visibility: hidden;
   }
 }
 
